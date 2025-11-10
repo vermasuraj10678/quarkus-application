@@ -11,7 +11,7 @@ WORKDIR /build
 COPY --chmod=755 mvnw .
 COPY .mvn .mvn
 
-# Copy pom.xml and download dependencies (better layer caching)
+# Copy pom.xml and download dependencies (better layer caching).
 COPY pom.xml .
 RUN ./mvnw dependency:go-offline -Pnative
 
