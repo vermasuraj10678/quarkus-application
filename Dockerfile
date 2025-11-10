@@ -7,12 +7,9 @@
 FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21 AS build
 WORKDIR /build
 
-# Copy Maven wrapper files
-COPY mvnw .
+# Copy Maven wrapper files with execute permission
+COPY --chmod=755 mvnw .
 COPY .mvn .mvn
-
-# Set execute permission on mvnw
-RUN chmod +x ./mvnw
 
 # Copy pom.xml and download dependencies (better layer caching)
 COPY pom.xml .
