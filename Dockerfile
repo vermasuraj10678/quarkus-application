@@ -5,11 +5,18 @@
 
 ## Stage 1 : build with maven builder image with native capabilities
 FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21 AS build
+
+# Install a newer version of Maven manually
 USER root
-RUN microdnf install -y maven && microdnf clean all
+RUN curl -L https://archive.apache.org/dist/maven/maven-3/3.9.5/binaries/apache-maven-3.9.5-bin.tar.gz | tar -xz -C /opt \
+    && ln -s /opt/apache-maven-3.9.5 /opt/maven \
+    && ln -s /opt/maven/bin/mvn /usr/local/bin/mvn
+
 COPY --chown=quarkus:quarkus . /code
 WORKDIR /code
 USER quarkus
+
+# Build the native executable
 RUN mvn -B org.apache.maven.plugins:maven-dependency-plugin:3.1.2:go-offline -Pnative
 RUN mvn package -Pnative -DskipTests
 
