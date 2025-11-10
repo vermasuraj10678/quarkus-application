@@ -5,21 +5,16 @@
 
 # Stage 1: Build native image with GraalVM
 FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21 AS build
-USER root
 
-# Install Maven
-RUN microdnf install -y maven && microdnf clean all
-
-USER quarkus
 WORKDIR /build
 
 # Copy pom.xml and download dependencies (better layer caching)
-COPY --chown=quarkus:quarkus pom.xml .
-RUN mvn dependency:go-offline -Pnative
+COPY pom.xml .
+RUN mvn dependency:resolve -Pnative
 
 # Copy source code and build the native image
-COPY --chown=quarkus:quarkus src ./src
-RUN mvn package -Pnative -DskipTests
+COPY src ./src
+RUN mvn package -Pnative -DskipTests -Dmaven.test.skip=true
 
 # Stage 2: Create the minimal runtime image
 FROM quay.io/quarkus/quarkus-micro-image:2.0
