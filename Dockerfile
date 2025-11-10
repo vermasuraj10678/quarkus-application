@@ -1,32 +1,36 @@
 ####
-# This Dockerfile is used to build a container image for the Quarkus application
-# It uses a multi-stage build to create a slim production image
+# This Dockerfile is used to build a native container image for the Quarkus application using GraalVM
+# It uses a multi-stage build to create a minimal production image
 ####
 
-# Stage 1: Build the application
-FROM maven:3.9.5-eclipse-temurin-17 AS build
+# Stage 1: Build native image with GraalVM
+FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21 AS build
 WORKDIR /build
+
+# Copy Maven wrapper files
+COPY mvnw .
+COPY .mvn .mvn
 
 # Copy pom.xml and download dependencies (better layer caching)
 COPY pom.xml .
-RUN mvn dependency:go-offline
+RUN ./mvnw dependency:go-offline -Pnative
 
-# Copy source code and build the application
+# Copy source code and build the native image
 COPY src ./src
-RUN mvn package -DskipTests
+RUN ./mvnw package -Pnative -DskipTests
 
-# Stage 2: Create the runtime image
-FROM eclipse-temurin:17-jre-alpine
+# Stage 2: Create the minimal runtime image
+FROM quay.io/quarkus/quarkus-micro-image:2.0
 WORKDIR /app
 
-# Copy the built artifact from the build stage
-COPY --from=build /build/target/quarkus-app/lib/ /app/lib/
-COPY --from=build /build/target/quarkus-app/*.jar /app/
-COPY --from=build /build/target/quarkus-app/app/ /app/app/
-COPY --from=build /build/target/quarkus-app/quarkus/ /app/quarkus/
+# Copy the native executable from build stage
+COPY --from=build /build/target/*-runner /app/application
+
+# Set proper permissions
+RUN chmod 775 /app/application
 
 # Set the application port
 EXPOSE 8080
 
-# Run the application
-ENTRYPOINT ["java", "-jar", "/app/quarkus-run.jar"]
+# Run the native application
+CMD ["./application", "-Dquarkus.http.host=0.0.0.0"]

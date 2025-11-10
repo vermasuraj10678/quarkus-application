@@ -1,0 +1,93 @@
+name: Build and Push Quarkus Application
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'pom.xml'
+      - 'Dockerfile'
+      - '.github/workflows/ci-cd.yml'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix={{branch}}-,suffix=-{{date 'YYYYMMDD-HHmmss'}},format=short
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Update Kustomize image tag
+        run: |
+          # Clone the GitOps repository
+          git clone https://github.com/vermasuraj10678/gitops.git
+          cd gitops
+          
+          # Extract the SHA-based tag
+          IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | grep -o 'main-[a-f0-9]*-[0-9]*-[0-9]*' | head -n1)
+          NEW_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}"
+          
+          # Update the image in the base kustomization
+          cd k8s/quarkus-app/base
+          kustomize edit set image quarkus-demo=${NEW_IMAGE}
+          
+          # Commit and push the changes
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Update Quarkus app image to ${IMAGE_TAG}"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/vermasuraj10678/gitops.git main
+
+      - name: Summary
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Application built successfully" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Docker image pushed to registry" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Kustomize manifests updated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
