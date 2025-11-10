@@ -65,7 +65,7 @@ jobs:
           git clone https://github.com/vermasuraj10678/gitops.git
           cd gitops
           
-          # Extract the SHA-based tag.
+          # Extract the SHA-based tag..
           IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | grep -o 'main-[a-f0-9]*-[0-9]*-[0-9]*' | head -n1)
           NEW_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}"
           
