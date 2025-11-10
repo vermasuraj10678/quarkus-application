@@ -1,5 +1,4 @@
 target/
-.mvn/
 *.iml
 .idea/
 .settings/
