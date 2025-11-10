@@ -52,7 +52,7 @@ jobs:
       - name: Summary
         run: |
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Quarkus native image built successfully" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Quarkus native image built successfully." >> $GITHUB_STEP_SUMMARY
           echo "✅ Docker image pushed to registry" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Image Tags:**" >> $GITHUB_STEP_SUMMARY
