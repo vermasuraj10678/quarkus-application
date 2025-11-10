@@ -15,7 +15,7 @@ COPY .mvn .mvn
 COPY pom.xml .
 RUN ./mvnw dependency:go-offline -Pnative
 
-# Copy source code and build the native image
+# Copy source code and build the native image.
 COPY src ./src
 RUN ./mvnw package -Pnative -DskipTests
 
